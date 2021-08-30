@@ -23,17 +23,7 @@ public final class RemoteFeedLoader: FeedLoader {
 			guard self != nil else { return }
 			switch result {
 			case .success((let data, let response)):
-				switch response.statusCode {
-				case 200:
-					if let result = try? JSONDecoder().decode(ImageFeedResponse.self, from: data) {
-						completion(.success(result.images))
-
-					} else {
-						completion(.failure(Error.invalidData))
-					}
-				default:
-					completion(.failure(Error.invalidData))
-				}
+				completion(FeedItemsMapper.map(data, from: response))
 			case .failure(_):
 				completion(.failure(Error.connectivity))
 			}
@@ -41,25 +31,40 @@ public final class RemoteFeedLoader: FeedLoader {
 	}
 }
 
-private struct ImageFeedResponse: Decodable {
-	let items: [RemoteFeedImage]
-	var images: [FeedImage] { items.map(\.feedImage) }
-}
-
-private struct RemoteFeedImage: Decodable {
-	let id: UUID
-	let description: String?
-	let location: String?
-	let url: URL
-
-	var feedImage: FeedImage {
-		FeedImage(id: id, description: description, location: location, url: url)
+internal struct FeedItemsMapper {
+	private struct ImageFeedResponse: Decodable {
+		let items: [RemoteFeedImage]
 	}
 
-	private enum CodingKeys: String, CodingKey {
-		case id = "image_id"
-		case description = "image_desc"
-		case location = "image_loc"
-		case url = "image_url"
+	private struct RemoteFeedImage: Decodable {
+		let id: UUID
+		let description: String?
+		let location: String?
+		let url: URL
+
+		var feedImage: FeedImage {
+			FeedImage(id: id, description: description, location: location, url: url)
+		}
+
+		private enum CodingKeys: String, CodingKey {
+			case id = "image_id"
+			case description = "image_desc"
+			case location = "image_loc"
+			case url = "image_url"
+		}
+	}
+
+	internal static func map(_ data: Data, from response: HTTPURLResponse) -> RemoteFeedLoader.Result {
+		switch response.statusCode {
+		case 200:
+			if let result = try? JSONDecoder().decode(ImageFeedResponse.self, from: data) {
+				return .success(result.items.map(\.feedImage))
+
+			} else {
+				return .failure(RemoteFeedLoader.Error.invalidData)
+			}
+		default:
+			return .failure(RemoteFeedLoader.Error.invalidData)
+		}
 	}
 }
