@@ -55,16 +55,10 @@ internal struct FeedItemsMapper {
 	}
 
 	internal static func map(_ data: Data, from response: HTTPURLResponse) -> RemoteFeedLoader.Result {
-		switch response.statusCode {
-		case 200:
-			if let result = try? JSONDecoder().decode(ImageFeedResponse.self, from: data) {
-				return .success(result.items.map(\.feedImage))
-
-			} else {
-				return .failure(RemoteFeedLoader.Error.invalidData)
-			}
-		default:
+		guard response.statusCode == 200,
+		      let responseRoot = try? JSONDecoder().decode(ImageFeedResponse.self, from: data) else {
 			return .failure(RemoteFeedLoader.Error.invalidData)
 		}
+		return .success(responseRoot.items.map(\.feedImage))
 	}
 }
