@@ -34,6 +34,10 @@ public final class RemoteFeedLoader: FeedLoader {
 internal struct FeedItemsMapper {
 	private struct ImageFeedResponse: Decodable {
 		let items: [RemoteFeedImage]
+
+		var feedImages: [FeedImage] {
+			return items.map(\.feedImage)
+		}
 	}
 
 	private struct RemoteFeedImage: Decodable {
@@ -59,6 +63,6 @@ internal struct FeedItemsMapper {
 		      let responseRoot = try? JSONDecoder().decode(ImageFeedResponse.self, from: data) else {
 			return .failure(RemoteFeedLoader.Error.invalidData)
 		}
-		return .success(responseRoot.items.map(\.feedImage))
+		return .success(responseRoot.feedImages)
 	}
 }
